@@ -64,6 +64,8 @@ rviz
 
 # 测发射
 
+校准拨盘
+
 开/controllers/shooter_controller
 
 rqt在/controllers/shooter_controller/command/发命令
@@ -88,6 +90,8 @@ rostopic pub /controllers/shooter_controller/command （Tab补全）
 
 接着转到对应硬件下的配置文件（can或ecat分别对应在rm_config内的rm_hw和rm_ecat_hw），找到想要使用的控制器的joint所对应的电机，修改can、电机id、电机类型
 
+然后将对应电机的urdf的减速比修改为待测电机的减速比
+
 ### 2.新建测试用控制器
 
 若本地无合适控制器，则需新建测试用控制器
@@ -98,7 +102,7 @@ rostopic pub /controllers/shooter_controller/command （Tab补全）
 
 ```yaml
   test_controller:
-    type: effort_joint_controller/JointPositionController
+    type: effort_controllers/JointPositionController
     joint: trigger_joint
     pid: { p: 3.0, i: 0.0, d: 0.15, i_clamp_max: 0.0, i_clamp_min: 0.0, antiwindup: true, publish_state: true }
 ```
@@ -117,6 +121,12 @@ tips：
 ## 开始测试
 
 在本地电脑上开roscore、跑硬件、加载控制器
+开启can口并设定can的比特率，如：
+
+```bash
+sudo ip link set can0 up type can bitrate 1000000
+```
+
 然后用rqt打开刚刚配置好的控制器，并发布命令，再用plotjugger查看所需数据
 
 ---
@@ -125,15 +135,31 @@ tips：
 
 # imu零飘补偿
 
-1.将rm_config/rm_hw/${robot_type}.yaml中的imu：gimbal_imu的angular_vel_offset全部设成0并部署至车上
+将rm_config/rm_hw/${robot_type}.yaml中的imu：gimbal_imu的angular_vel_offset全部设成0并部署至车上
 
-2.启动摩擦轮等有可能影响imu的组件，然后可将其他控制器全关，只留joint_state和shooter_controller（控摩擦轮）
+启动摩擦轮等有可能影响imu的组件，然后可将其他控制器全关，只留joint_state和shooter_controller（控摩擦轮）
 
-3.plotjugger拉出gimbal_imu/angular_x/y/z三个图像，然后右键点击图像，选中apply_filter_to_data，选中moving_average，将simple_count拉满，缓存区先给5，几秒后给200
+plotjugger拉出gimbal_imu/angular_x/y/z三个图像，然后右键点击图像，选中apply_filter_to_data，选中moving_average，将simple_count拉满，缓存区先给5，几秒后给200
 
-4.轻压车头后，将车保持静止一段时间，等到图像较为规律且小幅波动时，暂停记录三个图像的大概的值，一般取画面内（最高值+最低值）/2
+轻压车头后，将车保持静止一段时间，等到图像较为规律且小幅波动时，暂停记录三个图像的大概的值，一般取画面内（最高值+最低值）/2
 
-5.将4中得到的值取相反数，填到rm_config/rm_hw/${robot_type}.yaml中的imu：gimbal_imu的angular_vel_offset的x、y、z中
+将4中得到的值取相反数，填到rm_config/rm_hw/${robot_type}.yaml中的imu：gimbal_imu的angular_vel_offset的x、y、z中
+
+---
+
+---
+
+# 拨盘offset调节
+
+校准拨盘
+
+开/controllers/shooter_controller
+
+rqt在/controllers/shooter_controller/command/发命令时，将摩擦轮转速置零，mode给1，使拨盘转动至offset位置
+
+观察弹丸松紧，用手拨动弹丸，看第一颗弹丸与单发限位相对位置
+
+然后在shooter.transmission.urdf.xacro中改offset的值，并重复上述步骤至弹丸offset位置合适
 
 ---
 
@@ -184,3 +210,5 @@ tips：
       small_ready: &JOINT1_SMALL_READY
                      0.15
 ```
+
+# ccfnb
